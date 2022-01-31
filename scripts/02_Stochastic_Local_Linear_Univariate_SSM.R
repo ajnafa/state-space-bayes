@@ -122,16 +122,18 @@ post_preds <- draws %>%
 democracy_postpreds <- ggplot(post_preds, aes(x = time)) +
   # Difference between observed and predicted
   stat_gradientinterval(
-    aes(y = y_hat, slab_alpha = stat(pdf), fill = stat(y > 0)),
+    aes(y = y_hat, slab_alpha = stat(pdf), fill = stat(y > 0), shape = country),
     fill_type = "gradient",
     point_interval = mean_qi,
-    .width = c(0.68, 0.80)
+    .width = c(0.68, 0.80),
+    scale = 1
   ) +
   # Set the fill parameter for each group
   scale_fill_manual(
     values = c("firebrick", "royalblue"),
     labels = c("Negative", "Positive")
   ) +
+  scale_shape_manual(values = 22) +
   # Add custom theme settings
   plot_theme(plot.margin = margin(5, 1, 3, 5, "mm")) +
   # Add labels to the plot
@@ -149,7 +151,8 @@ democracy_postpreds <- ggplot(post_preds, aes(x = time)) +
     title = "Direction",
     override.aes = list(
       fill = c("firebrick", "royalblue"),
-      size = 6
+      size = 6,
+      shape = c(22, 22)
     )
   ),
   shape = "none"
