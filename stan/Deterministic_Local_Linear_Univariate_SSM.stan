@@ -21,9 +21,14 @@ model {
 
 generated quantities {
   vector[N] log_lik; // Pointwise Log Likelihood
+  vector[N] predictions; // Model Predictions
 
   // Calculate the Pointwise Log Likelihood
   for (n in 1:N) {
     log_lik[n] = normal_lpdf(y[n] | mu, sigma);
+  }
+  
+  for (n in 1:N) {
+    predictions[n] = normal_rng(mu, sigma);
   }
 }

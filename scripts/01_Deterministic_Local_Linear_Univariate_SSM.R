@@ -103,7 +103,7 @@ dll_ssm_fit <- dll_ssm_mod$sample(
 dll_ssm_fit$save_object(file = str_c(models_dir, "dll_ssm_fit.rds"))
 
 # Extract the Posterior Draws
-draws <- dll_ssm_fit$draws(variables = c("mu", "sigma"), format = "df")
+draws <- dll_ssm_fit$draws(variables = c("mu", "sigma", "predictions"), format = "df")
 
 # Print a Summary of the Posterior Draws
 (summ_draws <- summarise_draws(draws))
@@ -112,31 +112,59 @@ draws <- dll_ssm_fit$draws(variables = c("mu", "sigma"), format = "df")
 #--------------------------Posterior Predictions--------------------------------
 #------------------------------------------------------------------------------#
 
-# Plot the change in democracy over the previous year
-ggplot(vdem_df, aes(x = time)) +
+# Create a data frame of the generated posterior predictions
+post_preds <- draws %>% 
+  spread_draws(predictions[i]) %>% 
+  mutate(time = i + 1789) %>%  # Convert index to year
+  left_join(vdem_df, by = c("time")) %>% 
+  mutate(y_pred = libdem_delta - predictions)
+
+# Plot the predicted change in democracy over the previous year
+struct_breaks <- ggplot(post_preds, aes(x = time, y = y_pred)) +
   # Difference between observed and predicted
-  geom_line(
-    aes(y = libdem_delta - summ_draws$mean[1]), 
-    size = 1.1, 
-    color = "blue",
-    alpha = 0.75
-    ) +
-  # Observed Change
-  geom_line(
-    aes(y = libdem_delta), 
-    size = 1.1, 
-    color = "red", 
-    alpha = 0.75
+  stat_gradientinterval(
+    aes(slab_alpha = stat(pdf), fill = stat(y > 0)),
+    fill_type = "gradient",
+    point_interval = mean_qi,
+    .width = c(0.68, 0.80)
+  ) +
+  # Set the fill parameter for each group
+  scale_fill_manual(
+    values = c("firebrick", "royalblue"),
+    labels = c("Negative", "Positive")
     ) +
   # Add custom theme settings
-  plot_theme(plot.margin = margin(5, 1, 3, 3, "mm")) +
+  plot_theme(plot.margin = margin(5, 1, 3, 5, "mm")) +
   # Add labels to the plot
   labs(
     x = "Time",
-    y = "Liberal Democracy",
-    subtitle = "Figure 1.1 Democracy in America (1779 - 2020)"
+    y = TeX(r'(Liberal Democracy $\, \Delta_{t}$)'),
+    subtitle = "Figure 1.1 Democracy in America (1789 - 2020)"
   ) +
   # Adjust the breaks on the x axis
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   # Adjust the breaks on the y axis
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  # Setting the parameters for the plot legend
+  guides(fill = guide_legend(
+    title = "Direction",
+    override.aes = list(
+      fill = c("firebrick", "royalblue"),
+      size = 6
+    )
+  ),
+  shape = "none"
+  )
+
+# Save the generated plot object as a .jpeg file
+ggsave(
+  filename = "Figure_1.1_Structural_Breaks.jpeg",
+  plot = struct_breaks,
+  device = "jpeg",
+  path = models_dir,
+  width = 20,
+  height = 12,
+  units = "in",
+  dpi = "retina",
+  type = "cairo"
+)
